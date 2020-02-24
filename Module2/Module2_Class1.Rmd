@@ -1,0 +1,114 @@
+---
+title: "Class 2-1: Intro to Module 2"
+author: "Health Data Analysis Practicum (AS.280.347)"
+date: "February 24, 2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: 
+      toc_collapsed: true
+    toc_depth: 3
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, error = TRUE)
+knitr::opts_knit$set(root.dir = "/cloud/project")
+```
+
+## Preliminaries
+
+First load the packages that we will be using in this document. You will need to install some of these since we have not used them before.
+```{r}
+library(tidyverse)  # core group of tidyverse packages
+library(knitr)  # to make nice tables
+library(ggpubr)
+library(ggrepel)
+library(tidyverse)
+library(kableExtra)
+library(survey)
+library(haven)
+library(broom)
+library(plotrix)
+
+```
+
+# Motivation
+
+Hypertension is one of the most common diseases in the world. 
+It has been associated with myocardial infarction, stroke, renal 
+failure, and death if not detected early and treated appropriately.
+According to the Center for Disease Control's [Behavioral Risk Factor Surveillance System (BRFSS)](https://www.cdc.gov/brfss/){target="_blank"}, around 75 million American adults (32%) are estimated to have 
+high blood pressure, costing the US around $48.6 billion 
+each year. This total includes the cost of healthcare services, 
+medications to treat high blood pressure, and missed days of work.
+
+In this module, we will explore the relationship between hypertension and a variety of risk factors.
+
+This case study introduces survey methods for logistic regression and compares the results from survey-weighted logistic regression to standard logistic regression. The plot below visualizes the comparison between these two methods; it shows the estimated coefficients (with standard error) from each method for the risk factors under consideration.  Note that both the estimates and their standard errors are different when using ([logistic regression](https://en.wikipedia.org/wiki/Logistic_regression){target="_blank"}
+and [survey-weighted logistic regression](http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=9591E971AF4061BBF8F98083422FF313?doi=10.1.1.151.6423&rep=rep1&type=pdf){target="_blank"}). We will discuss later which model is a better choice 
+for this analysis. 
+
+<center>
+![](data/FinalPlot.png)
+</center>
+
+The libraries used in this study are listed in the following table, 
+along with their purpose in this particular case study:
+
+
+|Library|Purpose|
+|---|--------------------------------------------------------------------------------------------------------------|
+|`tidyverse`|A coherent system of packages for data manipulation, exploration and visualization|
+|`haven`|A useful tool to import and export data from SAS, STATA, and SPSS formats|
+|`broom`|Takes the messy output of built-in functions in R, such as lm, nls, or t.test, and turns it into tidy data frames|
+|`survey`|Provides useful functions for analyzing complex survey samples|
+|`ggpubr`|Provides some easy-to-use functions for creating and customizing 'ggplot2'- based publication ready plots|
+|`ggrepel`|Provides text and label geoms for 'ggplot2' that help to avoid overlapping text labels|
+|`kableExtra`|Helps with building common complex tables and manipulating table styles; creates awesome HTML tables|
+|`plotrix`|A variety of plots, various labeling, axis and color scaling functions|
+|`knitr`|---|
+
+In order to run the code for this case study, please ensure you have these packages installed. 
+
+The learning objectives for this case study include:
+
+  * data visualization
+  * logistic regression
+  * survey-weighted analysis
+  * selection of survey weights for unbalanced data
+
+# What are the data?
+
+For this case study, we will use data from the [New York City (NYC) Health and Nutrition Examination Survey (NYC HANES)](http://nychanes.org/){target="_blank"}, 
+modeled on the 
+[National Health and Nutrition Examination Survey (NHANES)](https://wwwn.cdc.gov/nchs/nhanes/default.aspx){target="_blank"}. NHANES is a population-based, cross-sectional study with data collected 
+from a physical examination and laboratory tests, as well as a face-to-face 
+interview and an audio computer-assisted self-interview (ACASI). It is 
+designed to assess the health and nutritional status of adults and children 
+in the United States. NYC HANES is a local version of NHANES, which implies 
+it mainly focuses on New York area. 
+
+To access the NYC HANES data, go to the [NYC HANES data page](http://nychanes.org/data/){target="_blank"} and  click the **NYC HANES Analytics Datasets** link; it will download automatically.  (A static link to this datafile can be found [here](http://nychanes.org/wp-content/uploads/sites/6/2019/01/public_v3_122018.sas7bdat){target="_blank"}.)
+
+The data we will be using in this case study was collected from August 2013 to June 2014 and is called the 
+**NYC HANES 2013-14 Blood Pressure Data**.  The survey used a probability sample of non-institutionalized adult 
+New York City residents (ages 20 years or older) to provide 
+representative citywide estimates. For further details, please refer to 
+the [NYC HANES website](http://nychanes.org/){target="_blank"}.
+
+In addition to the datafile, there are other useful resources available on the website including: 
+
+* [Data Documents](http://nychanes.org/wp-content/uploads/sites/6/2019/01/28283961_Data-Documentation.pdf){target="_blank"}: 
+Provides information on how best to analyze the NYC HANES 2013-14 dataset, given its population-based 
+and clustered sampling scheme.
+* [Analytics Guideline](http://nychanes.org/wp-content/uploads/sites/6/2015/11/ANALYTIC-GUIDELINES-2016_V2.pdf){target="_blank"}: 
+Provides overall guidance on the use of the NYC HANES 2013-14 dataset and statistical weights, 
+as well as other analytic issues pertaining to assessing statistical reliability of estimates.
+* [Variable Codebook](http://nychanes.org/wp-content/uploads/sites/6/2019/01/28283961_NYC-HANES_codebook_Public_V3_011019.pdf){target="_blank"}: Defines the variables included in the dataset and describes how values for these variables are coded.
+* [Weight Adjustment](http://nychanes.org/wp-content/uploads/sites/6/2015/11/NYC-HANES-Training-Slides_part-2_08222016.pdf){target="_blank"}: 
+Explains how NYC HANES data are weighted in order to compensate for unequal probability of selection and explains how to choose the correct weight for analysis.
+* [Questionnaire](http://nychanes.org/wp-content/uploads/sites/6/2015/11/28283961_NYC-HANES-2013-14_Questionnaire.pdf){target="_blank"}: Shows the questionnaire that participants in the study completed.
+
+All of these documents enable data analysts to understand the definitions and coding of the variables and then complete the analysis appropriately.
+
