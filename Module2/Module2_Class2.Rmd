@@ -1,7 +1,7 @@
 ---
-title: "Class 2-1: Intro to Module 2"
+title: "Class 2-2: Continuing with Module 2"
 author: "Health Data Analysis Practicum (AS.280.347)"
-date: "February 24, 2020"
+date: "March 2, 2020"
 output: 
   html_document:
     toc: true
