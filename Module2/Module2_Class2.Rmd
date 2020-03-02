@@ -967,7 +967,7 @@ Refine your data display from last week with the NYC HANES data to answer Questi
 
 Use the `svydesign()` function to create an appropriate survey-weighted data set to use for your modeling analysis. You will need to be sure to include a variable with the appropriate survey weights in your data set.
 
-Use the `svyglm()` function to fit a logistic regression model, with hypertension as the outcome, to being to explore the relationships among the variables in your data set in a modeling framework. You may want to consider the variables you include based on your data visualizations or other reasons. Write a few sentences interpreting the outputs of your model. (If you included many variables, you don't need to write about all of them here.)
+Use the `svyglm()` function to fit a logistic regression model, with hypertension as the outcome, to begin to explore the relationships among the variables in your data set in a modeling framework. You may want to consider the variables you include based on your data visualizations or other reasons. Write a few sentences interpreting the outputs of your model. (If you included many variables, you don't need to write about all of them here.)
 
 * Submit your data display and the code for your initial survey-weighted analysis in R Markdown through Github by Sunday (March 8, 2020) at midnight.
 * You may work together on this assignment, but you must submit your own data display; please credit in your assignment anyone with whom you collaborated.
