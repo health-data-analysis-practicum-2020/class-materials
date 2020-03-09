@@ -1,0 +1,741 @@
+---
+title: "Class 2-3: Continuing with Module 2"
+author: "Health Data Analysis Practicum (AS.280.347)"
+date: "March 9, 2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: 
+      toc_collapsed: true
+    toc_depth: 3
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, error = TRUE)
+knitr::opts_knit$set(root.dir = "/cloud/project")
+```
+
+## Module 2: Factors that are associated with development of hypertension
+
+Recall that our main questions of interest are:
+
+  * Question 2.1: What factors measured in the NYC HANES survey are associated with having hypertension?
+  * Question 2.2: How do our estimates from survey-weighted logistic regression differ from those where we ignore survey weights?
+
+
+The learning objectives for this module include:
+
+  * data cleaning/visualization
+  * logistic regression
+  * survey-weighted analysis
+  * selection of survey weights for unbalanced data
+
+## Reminder: What are the data?
+
+For this case study, we will use data from the [New York City (NYC) Health and Nutrition Examination Survey (NYC HANES)](http://nychanes.org/){target="_blank"}, 
+modeled on the 
+[National Health and Nutrition Examination Survey (NHANES)](https://wwwn.cdc.gov/nchs/nhanes/default.aspx){target="_blank"}. NHANES is a population-based, cross-sectional study with data collected 
+from a physical examination and laboratory tests, as well as a face-to-face 
+interview and an audio computer-assisted self-interview (ACASI). It is 
+designed to assess the health and nutritional status of adults and children 
+in the United States. NYC HANES is a local version of NHANES, which implies 
+it mainly focuses on New York area. 
+
+
+## Learning objectives for today
+
+Our main question of interest for this module is: Based on the data collected from NYC HANES, which risk factors play a role in development of hypertension?
+
+Today, we will continue to work toward answering this by learning how to:
+
+* Review survey weighting and how to determine what weight to use for your analysis
+* Discuss your updated data visualizations and initial modeling results
+* Learn strategies for approaching model selection: how do you decide what variables to include in your model and how do you compare different models?
+* Introduce your final project to get you to start thinking about what you may want to pursue
+
+
+## Revised/additional information on survey weights
+
+Now that we have spent some time cleaning the data and looking at 
+data visualizations, we want to use a statistical 
+model to address our question of interest about which 
+factors are related to the risk of hypertension.
+
+Which model should we use? Since we are looking 
+at whether or not someone develops hypertension, our outcome
+variable (`hypertension`) is **binary**. A binary outcome means a logistic regression model is a natural choice.  However, think of the nature of our dataset and how it was collected. It is data obtained from a survey, and we have to account for this during the analysis of the data.
+
+In a survey sample, we often end up with "too many" samples in a category, often due to the designed sampling plan.  By "too many", we mean more than would be expected based on the make-up of the population from which we are sampling.  For example, we may have a much higher proportion of women in our sample compared to the population and a much lower proportion of men than in the population. This may happen by design if we purposely *oversample* a group that isn't well represented in the overall population.
+
+To analyze our survey data and infer back to the population, we can use data weighting to account for the mismatch between the population and sample. If we want the data to reflect the whole population, instead of treating each data 
+point equally, we weight the data so that taken together,
+our sample does reflect the entire community.
+
+To appropriately analyze our data as a survey, we will use the [package `survey`](https://cran.r-project.org/web/packages/survey/survey.pdf), which contains functions for various types of analysis that account for survey design.
+
+## Survey weights 
+
+### What are survey weights?
+
+Suppose that we have 25 students (20 male and 5 female) in our biostatistics
+class, and we want to talk with 5 of them to gauge their 
+understanding of the content in the class. Although the proportion of female students in the population is small, we are very interested in getting their opinion, so we want to be sure to have some female students in our sample.  By randomly sampling 5 students 
+from the class, it's quite possible we could end up with all male students in our sample, and we wouldn't learn anything about the female perspective in the class. 
+
+Consider the extreme case where we are going to require that 4 of the 5 people we sample are female students, to be sure we get good information about the female perspective.  We sample 4 of the 5 female students and 1 of the 20 male students.   Do we expect this sample to represent the population? Definitely not, since there is a higher proportion of females in the sample than the population. We can 
+correct for this by weighting our samples so that, taken together, 
+they better reflect the composition of the population we want to learn about. 
+
+Let's assume we sampled 4 of the 5 female students and 1 of the 20 male students from our population. To calculate the survey weights, we could use the following formula:
+
+$$
+\begin{aligned}
+Weight & = \frac{1}{Prob~of~being~selected~for~sample} \\
+       & = \frac{1}{(Number~in~sample)/(Number~in~population)} \\
+       & \\
+       & =  \frac{Number~in~population}{Number~in~sample}
+\end{aligned}
+$$
+
+That gives the following sample weights:
+
+$$w_m=Male~Weight = \frac{20}{1} = 20$$
+
+$$w_f=Female~Weight = \frac{5}{4} = 1.25$$
+
+We can interpret these weights by saying that each male student in the sample represents 20 male students in the population and each female student in the sample represents 1.25 female students in the population.  Mathematically, we can see this as:
+
+$$ 1~observed~male* w_m = 20~males $$ 
+and 
+$$ 4~observed~females * w_f = 5~females$$ 
+
+<center>
+![](data/surveyweight.jpeg)
+</center>
+
+By weighting the observations, we make the sample better 
+represent the population.
+
+For complex survey sampling designs, it can be 
+complicated to calculate the weight for each individual observation. However, for many large survey data sets, such as NHANES, the appropriate weight is calculated by the organization that administers the survey and provided as a variable in the dataset. In our case study, this survey weight is calculated and provided as the `surveyweight` variable and we can simply 
+apply this weight and perform a **survey-weighted logistic regression**.
+
+### Selecting the weights
+
+Because the NYC HANES 2013-2014 data have been collected to 
+address a variety of different questions and using different 
+surveys, the researchers who produced the data have employed a 
+somewhat complex weighting scheme to compensate for unequal 
+probability of selection. Five sets of survey weights have been 
+constructed to correspond to different sets of variables that were
+collected: CAPI  weight, Physical weight, Blood Lab result weight,
+Urine Lab results weight and Salica Lab results weight. 
+**The determination of the most appropriate weight to use for a specific analysis depends upon the variables selected by the data analyst**. 
+
+
+We will give a table to indicate each variable's origin stream:
+
+
+| Variable names   |      Component      |
+|---------------------------------|---------------------------------|
+| age                                   | CAPI                                                                                                                                                                 |
+| race                                  | CAPI                                                                                                                                                                 |
+| gender                                | CAPI                                                                                                                                                                 |
+| diet                                  | CAPI                                                                                                                                                                 |
+| income                                | CAPI                                                                                                                                                                 |
+| diabetes                               | CAPI                                                                                                                                                               |
+| cholesterol                           | CAPI                                                                                                                                                                 |
+| drink                                 | CAPI                                                                                                                                                                 |
+| smoking                               | CAPI                                                                                                                                                                 |
+| hypertension                           | CAPI                                                                                                                                                                |
+| bmi                                    | EXAM                                                                                                                                                                |
+
+
+When an analysis involves variables from different components
+of the survey, the analyst should decide whether the outcome 
+is inclusive or exclusive, and then choose certain weights. 
+To learn how to use weights for different purposes, refer to the particular
+[Analytics Guidelines](http://nychanes.org/wp-content/uploads/sites/6/2015/11/ANALYTIC-GUIDELINES-2016_V2.pdf) for the survey. 
+
+In our case, we choose EXAM weight since our analysis is exclusive. Do 
+you remember we have removed all of the missing values? Now our dataset is 
+limited to those who received a physical exam test, which means all of our 
+survey participants have a value for the `EXAM_WT` variable. We selected
+this variable and renamed it as `surveyweight` in the earlier data 
+cleaning part of this analysis. 
+
+NYC HANES has put together some really useful documentation to give some further examples of how to select the correct weight to use in different cases: the slideshow at [Weight Adjustment](http://nychanes.org/wp-content/uploads/sites/6/2015/11/NYC-HANES-Training-Slides_part-2_08222016.pdf){target="_blank"} explains how the NYC HANES data are weighted in order to compensate for unequal probability of selection and explains how to choose the correct weight for analysis, including some hypothetical analysis scenarios. In order to determine the sources of the different variables, you can refer to the [Variable Codebook](http://nychanes.org/wp-content/uploads/sites/6/2019/01/28283961_NYC-HANES_codebook_Public_V3_011019.pdf){target="_blank"}.
+
+
+
+
+## Your work for this week
+
+Start by loading libraries and raw data set.
+```{r}
+library(tidyverse)  # core group of tidyverse packages
+library(knitr)  # to make nice tables
+library(ggpubr)
+library(ggrepel)
+library(tidyverse)
+library(kableExtra)
+library(survey)
+library(haven)
+library(broom)
+library(plotrix)
+
+dat <- read_sas('Module2/data/d.sas7bdat')
+dim(dat)
+```
+
+
+### Example 1
+
+```{r , echo=FALSE}
+### put recoding data here
+
+### renaming the 13 variables considered in our analysis
+
+hy_df <- 
+  dat %>% 
+    select(id = KEY,
+           age = SPAGE,
+           race = DMQ_14_1,
+           gender = GENDER,
+           diet = DBQ_1,
+           income = INC20K,
+           diabetes = DIQ_1,
+           bmi = BMI,
+           cholesterol = BPQ_16,
+           drink = ALQ_1_UNIT,
+           smoking = SMOKER3CAT,
+           hypertension = BPQ_2,
+           surveyweight = EXAM_WT)
+
+### merging answers to ALQ_1 to ALQ_1_unit as one to better capture drinking that includes those who never drink. We label those subjects who answered 0 to variable AlQ_1 (those who never drink) as 4.
+
+hy_df <- hy_df %>% 
+          mutate(drink = ifelse(dat$ALQ_1 == 0, 4, drink))
+
+### (1) converting categorical variables to factors using the nummerical values and categoy labels given in the Variable Codebook. (2) creating a natural ordering to the factor levels.
+
+hy_df <- hy_df %>% mutate(race=factor(race, levels=c(100, 110, 120, 140, 180, 250), 
+                      labels=c('White', 'Black/African American', 
+                              'Indian /Alaska Native', 
+                              'Pacific Islander', 
+                              'Asian', 'Other Race')),
+                     gender = factor(gender, levels=c(1,2), 
+                        labels=c('Male', 'Female')),
+                     diet = factor(diet, levels=c(5:1), 
+                      labels=c('Poor', 'Fair', 'Good', 
+                               'Very good','Excellent')),
+                     income = factor(income, levels=c(1:6), 
+                        labels=c('Less than $20,000','$20,000 - $39,999',
+                                 '$40,000 - $59,999','$60,000 - $79,999',
+                                 '$80,000 - $99,999','$100,000 or more')),
+                     diabetes = factor(diabetes, levels=c(2,1,3), 
+                          labels=c('No','Yes','Prediabetes')),
+                     cholesterol = factor(cholesterol, levels=c(2,1), 
+                             labels=c('Low value','High value')),
+                     drink = factor(drink, levels=c(4,1,2,3), 
+                       labels=c('Never','Weekly', 'Monthly', 'Yearly')),
+                     smoking = factor(smoking, levels=c(3:1), 
+                         labels=c('Never smoker','Former smoker','Current smoker')),
+                     hypertension = factor(hypertension, levels=c(2,1), 
+                              labels=c('No','Yes'))
+                     )
+
+hy_p_df <- 
+  hy_df %>%
+  drop_na()
+
+```
+
+```{r}
+### put code for survey-weighted analysis here
+
+### specify the design relative to our dataset
+hypertension_design <- svydesign(
+  id = ~1,
+  #fpc = ~rep(N,n),
+   weights = ~hy_p_df$surveyweight,
+  data = hy_p_df
+  )
+
+### survey-weighted summary statistics for age
+svymean(~age, hypertension_design)
+mean(hy_p_df$age)
+std.error(hy_p_df$age)
+
+svyby(~age, by=~hypertension, design = hypertension_design, 
+      FUN = svymean)
+
+### survey-weighted logistic regression
+g1 <- svyglm(hypertension ~ 
+               age + cholesterol + income + 
+               diabetes + bmi,
+              family = quasibinomial(link = 'logit'), 
+             design = hypertension_design)
+
+g1_res <- tidy(g1)
+g1_res %>% as.data.frame()
+
+g1_res_exp<-exp(g1$coefficients)
+g1_res_exp
+```
+
+Survey-weighted summary statistics: There is not a large difference between the mean age and their standard errors. Notice when we use survey-weighted values, the mean age for non-hypertense people is now 41, compared to ~35 when we used non-survey weighted values. The mean age for hypertense people using both survey-weighted values and non-survey weighted values is both 55.
+
+Survey-weighted logistic regression: 
+
+Age -> Holding all other variables constant, a one-unit increase in age is associated with a 3.9% increase in the odds of hypertension. This is statistically significant because p value of 5.596290e-13 < 0.05.
+
+NOTE TO ALL: You can think about starting to use R code to include these numbers in your text; for example:
+Age -> Holding all other variables constant, a one-unit increase in age is associated with  `r round(100*g1_res_exp["age"] - 100,1)`% increase in the odds of hypertension. This is statistically significant because p value of `r format(g1_res %>% filter(term=="age") %>% pull(p.value), digits=3)` < 0.05.
+
+
+### Example 2
+
+```{r , echo=FALSE}
+### put recoding data here
+### you can use comments like this to describe what you are doing
+
+### selecting and renaming variables
+hy_df <- 
+  dat %>% 
+    select(id = KEY,
+           age = SPAGE,
+           race = DMQ_14_1,
+           gender = GENDER,
+           diet = DBQ_1,
+           bmi = BMI,
+           education = EDU4CAT,
+           marital = MARITAL,
+           general_health = HSQ_1,
+           hypertension = BPQ_2,
+           surveyweight = EXAM_WT
+           )
+
+### numeric to descriptive categories
+hy_df <- hy_df %>% 
+  mutate(education = factor(education, 
+                          levels = c(1, 2, 3, 4, 5), 
+                          labels = c("< HS", 
+                                     "HS/GED", 
+                                     "Some College", 
+                                     "College Grad +",
+                                     "Other")),
+         marital = factor(marital, 
+                          levels = c(1, 2, 3),
+                          labels =c("Never married or Single",
+                                    "Married or Living with partner",
+                                    "Widowed, Divorced, or Separated")),
+         race = factor(race,
+                       levels = c(100, 110, 120, 140,180,
+                                  250),
+                       labels = c("White",
+                                  "Black/African American",
+                                  "Indian/Alaska Native",
+                                  "Native Hawaiian/Pacific Islander",
+                                  "Asian",
+                                  "Other")),
+         general_health = factor(general_health,
+                                 levels = c(1, 2, 3, 4, 5), 
+                                 labels = c("Excellent",
+                                            "Very good",
+                                            "Good", "Fair",
+                                            "Poor")),
+         gender = factor(gender, 
+                         levels = c(1, 2),
+                         labels = c("Male", "Female")),
+         diet = factor(diet,
+                       levels = c(1, 2, 3, 4, 5), 
+                       labels = c("Excellent", "Very good",
+                                  "Good", "Fair", "Poor")),
+         hypertension = factor(hypertension,
+                               levels = c(2, 1),
+                               labels = c("No", "Yes"))
+  )
+
+health_tab <- hy_df %>%
+  group_by(general_health) %>%
+  count(general_health, hypertension) %>%
+  mutate(prop=n/sum(n)) %>%
+  filter(hypertension == "Yes")
+
+hy_p_df <- 
+  hy_df %>%
+  drop_na()
+
+dim(hy_p_df)
+
+```
+
+```{r}
+### put code for survey-weighted analysis here
+
+hypertension_design <- svydesign(
+  id = ~1,
+  #fpc = ~rep(N,n),
+   weights = ~hy_p_df$surveyweight,
+  data = hy_p_df
+)
+
+summary(hypertension_design)
+
+# weighted analysis
+svymean(~diet + general_health + marital, hypertension_design)
+
+g <- svyglm(hypertension ~ diet + general_health + marital, 
+    family = binomial(link = 'logit'), design = hypertension_design)
+
+summary(g)
+
+g_res <- tidy(g)
+g_res
+
+```
+
+This model does not include age, sex or bmi in it. What changes if we do include these?
+
+```{r}
+g2 <- svyglm(hypertension ~ diet + general_health + marital + age + gender + bmi, 
+    family = binomial(link = 'logit'), design = hypertension_design)
+
+summary(g2)
+
+g2_res <- tidy(g2)
+g2_res
+
+g2_res %>% left_join(g_res, by="term", suffix=c(".g2", ".g")) %>% select(term, estimate.g, p.value.g, estimate.g2, p.value.g2)
+```
+
+### Example 3
+
+
+```{r , echo=FALSE}
+library(dplyr)
+library(tidyr)
+
+# Selecting and Renaming Variables
+hyp_data <- dat %>%
+    select(id = KEY,
+           age = SPAGE,
+           race = DMQ_14_1,
+           gender = GENDER,
+           diet = DBQ_1,
+           income = INC20K,
+           diabetes = DIQ_1,
+           bmi = BMI,
+           cholesterol = BPQ_16,
+           drink = ALQ_1_UNIT,
+           smoking = SMOKER3CAT,
+           hypertension = BPQ_2,
+           surveyweight = EXAM_WT)
+
+hyp_data <- hyp_data %>% #recoding those who answered 0 as 4 "Never Drink"
+    mutate(drink = ifelse(dat$ALQ_1 == 0, 4, drink))
+
+hyp_data <- hyp_data %>% #recoding categorical variables into factors
+    mutate(race = factor(race, levels = c(100, 110, 120, 140, 180, 250),
+                         labels = c('White', 'Black/African American', 'Indian/Alaska Native', 'Pacific Islander', 'Asian', 'Other Race')),
+           gender = factor(gender, levels = c(1,2),
+                           labels = c('Male', 'Female')),
+           diet = factor(diet, levels = c(5:1),
+                         labels = c('Poor', 'Fair', 'Good', 'Very Good', 'Excellent')),
+           income = factor(income, levels = c(1:6),
+                           labels = c('Less than $20,000', '$20,000 - $39,999', '$40,000 - $59,999', '$60,000 - $79,999', '$80,000 - $99,999', '$100,000 or more')),
+           diabetes = factor(diabetes, levels = c(2,1,3),
+                             labels = c('No', 'Yes', 'Prediabetes')),
+           cholesterol = factor(cholesterol, levels = c(2,1),
+                                labels = c('Low value', 'High value')),
+           drink = factor(drink, levels = c(4,1,2,3),
+                          labels = c('Never', 'Weekly', 'Monthly', 'Yearly')),
+           smoking = factor(smoking, levels = c(3:1),
+                            labels = c('Never smoker', 'Former smoker', 'Current smoker')),
+           hypertension = factor(hypertension, levels= c(2,1),
+                                 labels = c('No', 'Yes'))
+           )
+
+summary(hyp_data) #seeing an overview of the data ranges and values
+
+hyp_data_clean <- hyp_data %>% #cleaning 13 variables by removing NA values
+  drop_na()
+
+```
+
+```{r}
+### put code to create data display here
+library(ggplot2)
+library(ggpubr)
+
+#Creating single-variable comparisons to hypertension status
+
+age.plot <- hyp_data_clean %>%
+  ggplot(aes(x = hypertension, y = age)) +
+    geom_boxplot() +
+    ggtitle('Distribution of age by hypertension status')
+age.plot
+
+bmi.plot <- hyp_data_clean %>%
+  ggplot(aes(x = hypertension, y = bmi)) +
+    geom_boxplot() +
+    ggtitle('Distribution of BMI by hypertension status')
+bmi.plot
+
+race.plot <- hyp_data_clean %>%
+  ggplot(aes(x = race, fill = hypertension)) + 
+    geom_bar(position = "fill") +
+    ggtitle('Distribution of Hypertension by Race') + 
+    ylab('Proportion')
+race.plot
+
+diabetes.plot <- hyp_data_clean %>%
+  ggplot(aes(x = diabetes, fill = hypertension)) + 
+    geom_bar(position = "fill") +
+    ggtitle('Distribution of Hypertension by Diabetes') + 
+    ylab('Proportion')
+diabetes.plot
+
+cholesterol.plot <- hyp_data_clean %>%
+  ggplot(aes(x = cholesterol, fill = hypertension)) + 
+    geom_bar(position = "fill") +
+    ggtitle('Distribution of Hypertension by Cholesterol') + 
+    ylab('Proportion')
+cholesterol.plot
+
+# Comparing two variables at a time to hypertension status to try and visualize effect modification
+
+race.diabetes.plot <- hyp_data_clean %>%
+  ggplot(aes(x = diabetes, fill = hypertension)) + 
+    geom_bar(position = "fill") +
+    ylab('Proportion') +
+    ggtitle('Distribution of Hypertension by Race and Diabetes Status') +
+    facet_wrap(~race)
+race.diabetes.plot
+
+cholesterol.diabetes.plot <- hyp_data_clean %>%
+  ggplot(aes(x = cholesterol, fill = hypertension)) + 
+    geom_bar(position = "fill") +
+    ylab('Proportion') +
+    facet_wrap(~diabetes) +
+    ggtitle('Distribution of Hypertension by Cholesterol and Diabetes Status') 
+cholesterol.diabetes.plot
+
+race.cholesterol.plot <- hyp_data_clean %>%
+  ggplot(aes(x = cholesterol, fill = hypertension)) + 
+    geom_bar(position = "fill") +
+    ylab('Proportion') +
+    facet_wrap(~race) +
+    ggtitle('Distribution of Hypertension by Race and Cholesterol Status') 
+race.cholesterol.plot
+```
+
+In the 11 variables in our selected codebook that are potential factors (excluding "hypertension" which is our outcome of interest, and "id" which is an identifier), 5 yield initial data visualizations that indicate possibly significant associations with hypertension. The proportion of those with hypertension was plotted with respect to categorical variables of race, diabetes, and cholesterol, and the distribution of the continuous numerical variables of age and BMI were plotted with respect to hypertension status. 
+
+The association of age with hypertension appears to be strong, with the median age for those with hypertension about 20 years older higher than the median age for those without hypertension. 
+
+The association of BMI with hypertension is also visible, with the 25th percentile of those with hypertension having approx. the same BMI as the median of those without hypertension. 
+
+The association of race with hypertension is particularly visible in certain racial groups, especially Pacific Islander and Black/African American, who had about 67.5% and 37.5% with hypertension, respectively, compared to an approximate proportion of a little under one fourth for the other racial categories.
+
+The association of diabetes with hypertension appears to be very strong, with the proportion of hypertension in diabetes being about 67%, while those without diabetes had a proportion of about 20% with hypertension, less than a third. Prediabetics also saw an increased risk for having hypertension, with a proportion of about 40% with hypertension.
+
+The association of cholesterol with hypertension also appears to be very strong, with the high value cholesterol group having approximately 1.5 times the risk of hypertension than that of the low value cholesterol group, at a little under 50% and about 20% respectively. 
+
+Looking at multi-variable comparisons with hypertension status, it is possible that some of the categorical variables that appeared to significantly affect hypertension status might also modify effects when looked at together. For example, when stratified by diabetes status (no, yes, and prediabetes), the low-value to high-value risk of hypertension looked about 3x, 1.2x, and a little under 2x, respectively, in each diabetes category. Additionally, race stratification seemed to have an effect when comparing hypertension risks between diabetes categories or cholesterol categories.
+
+
+```{r}
+### put code for survey-weighted analysis here
+
+library(survey)
+library(broom)
+
+#Specifying survey design
+hypertension_design <- svydesign(
+  id = ~1,
+  #fpc = ~rep(N,n),
+   weights = ~hyp_data_clean$surveyweight,
+  data = hyp_data_clean
+)
+
+summary(hypertension_design)
+
+g <- svyglm(hypertension ~ 
+              age + bmi + cholesterol + race + diabetes, family = quasibinomial(link = 'logit'), design = hypertension_design)
+
+summary(g)
+
+g_res <- tidy(g)
+g_res %>% as.data.frame()
+
+exp(g$coefficients)
+
+```
+
+Holding all else constant, a one point increase in BMI is associated with a 7.6% increased odds of hypertension, a one year increase in age is associated with a 4.5% increased odds, high value cholesterol is associated with 109% increase in odds compared to low-level cholesterol, being Black/African American is associated with 134% increase in odds than being White, being Pacific Islander is associated with 880% increase in odds thann being White, and having diabetes in associated with 151% increase in odds compared to those without diabetes.
+
+MAT: Nice job interpreting the outputs. You may want to comment on statistical significance (although it looks like you are only discussing the difference that are statistically significant, in which case, good job). Also, see notes from class on a way of using inline R code in your summary. Finally, given that you saw some evidence of an interaction effect, have you thought about fitting a model to measure that?
+
+### Some points of discussion
+
+What surprising relationships did you see in your displays? Were there some counter-intuitive patterns? What might be causing these? How might you investigate this?
+
+What has anyone figured out about the effect of smoking, for example?
+
+How would you go about looking for interactions between variables?
+```{r}
+
+g_int <- svyglm(hypertension ~ 
+              age + bmi + cholesterol*diabetes + race , family = quasibinomial(link = 'logit'), design = hypertension_design)
+
+summary(g_int)
+
+g_int_res <- tidy(g_int)
+g_int_res %>% as.data.frame()
+
+exp(g_int$coefficients)
+
+```
+
+
+
+### Model selection
+
+You've now fit at least one model using these data. But how do you know if it is a good model for answering our question of interest? There are many approaches to answering this question.
+
+One way you can decide what variables to include in a model is by looking at whether the model coefficients associated with those variables are statistically significantly different from zero. This tells you whether the value of the outcome (in this case log odds of having hypertension) varies as this particular input variable changes, considering all other variables in your model. So you can look at the t-statistics and p-values associated with this variable to see whether you would reject the null hypothesis that the parameters associated with this variable are zero. 
+
+
+```{r read-data, echo=FALSE}
+hy_df <- 
+  dat %>% 
+    select(id = KEY,
+           age = SPAGE,
+           race = DMQ_14_1,
+           gender = GENDER,
+           diet = DBQ_1,
+           income = INC20K,
+           diabetes = DIQ_1,
+           bmi = BMI,
+           cholesterol = BPQ_16,
+           drink = ALQ_1_UNIT,
+           smoking = SMOKER3CAT,
+           hypertension = BPQ_2,
+           surveyweight = EXAM_WT)
+
+hy_df <- hy_df %>% 
+          mutate(drink = ifelse(dat$ALQ_1 == 0, 4, drink))
+
+hy_df <- hy_df %>% mutate(race=factor(race, levels=c(100, 110, 120, 140, 180, 250), 
+                      labels=c('White', 'Black/African American', 
+                              'Indian /Alaska Native', 
+                              'Pacific Islander', 
+                              'Asian', 'Other Race')),
+                     gender = factor(gender, levels=c(1,2), 
+                        labels=c('Male', 'Female')),
+                     diet = factor(diet, levels=c(5:1), 
+                      labels=c('Poor', 'Fair', 'Good', 
+                               'Very good','Excellent')),
+                     income = factor(income, levels=c(1:6), 
+                        labels=c('Less than $20,000','$20,000 - $39,999',
+                                 '$40,000 - $59,999','$60,000 - $79,999',
+                                 '$80,000 - $99,999','$100,000 or more')),
+                     diabetes = factor(diabetes, levels=c(2,1,3), 
+                          labels=c('No','Yes','Prediabetes')),
+                     cholesterol = factor(cholesterol, levels=c(2,1), 
+                             labels=c('Low value','High value')),
+                     drink = factor(drink, levels=c(4,1,2,3), 
+                       labels=c('Never','Weekly', 'Monthly', 'Yearly')),
+                     smoking = factor(smoking, levels=c(3:1), 
+                         labels=c('Never smoker','Former smoker','Current smoker')),
+                     hypertension = factor(hypertension, levels=c(2,1), 
+                              labels=c('No','Yes'))
+                     )
+
+## remove entries with missing data
+hy_p_df <- 
+  hy_df %>%
+  drop_na()
+
+hypertension_design <- svydesign(
+  id = ~1,
+  #fpc = ~rep(N,n),
+   weights = ~hy_p_df$surveyweight,
+  data = hy_p_df
+)
+```
+
+
+For example, we can look at these two models that we fit last week:
+
+```{r, warning=TRUE}
+g0 <- svyglm(hypertension ~ smoking, 
+    family = quasibinomial(link = 'logit'), design = hypertension_design)
+summary(g0)
+
+g1 <- svyglm(hypertension ~ 
+               age + race + gender + diet + income + 
+               diabetes + bmi + cholesterol + drink + smoking,
+             family = quasibinomial(link = 'logit'), 
+             design = hypertension_design)
+summary(g1)
+```
+
+
+Not all of the variables in our full model `g1` are considered statistically significant so we would perhaps
+like to remove some of them to get a reduced model. However, you may want to keep a variable in the model, even if the coefficients are not significantly different from zero if that variable is important for the question you are trying to answer.
+
+It's also often nice to get a value that summarizes how well your model fits the data. To do this here, we'll use an approach referred to as Akaike's "An Information Criterion," or `AIC()`. We won't disucss detail here, but the lower an AIC for a model, the better that model fits the data.
+
+Below, we can see that `g1`, where we include multiple predictors has the lowest AIC value. Looking at this value combined with your model summary output will help you determine which of your models is the best choice for your final analysis.
+
+```{r}
+AIC(g0, g1)
+```
+
+
+#### Some further notes on survey weights
+
+Remember that the weight variable that you use will depend on the set of variables that will be included in your final model. You may need to revisit this choice depending on what your final model is.
+
+## Getting to Question 2.2
+
+Recall Question 2.2: How do our estimates from survey-weighted logistic regression differ from those where we ignore survey weights?
+
+To answer this, use your final model from your survey-weighted analysis and fit a standard (unweighted) logistic regression instead. How might you want to compare the results of these two models? A table? Some kind of visualization?
+
+<center>
+![](data/FinalPlot.png)
+</center>
+
+
+
+
+## Assignment 2.3
+
+Refine your data display and survey-weighted analysis from last week with the NYC HANES data to answer Question 2.1: What factors measured in the NYC HANES survey are associated with having hypertension?
+
+Think about connecting each table or visualization that you make with your downstream modeling choices. How do your displays point you toward the model you end up fitting? 
+
+Think about justifying each choice of variable in your model: can you use a visualization to do this? Look at significance of coefficients? Talk about how you are curious about a specific variable and how it influences hypertension? Compare models using AIC to decide on your final model?
+
+Finally, start working on Question 2.2, comparing the survey-weighted results to those from an unweighted logisitic regression. What is an effective way of illustrating how the results compare?
+
+
+* Submit your data display(s) and the code for your updated survey-weighted analysis in R Markdown through Github by Sunday March 22, 2020 at midnight.
+* You may work together on this assignment, but you must submit your own data display; please credit in your assignment anyone with whom you collaborated.
+* Next week in class we will continue with discussion/critiques of your model selection and comparisons.
+
+## Looking ahead to your final projects
+
+<center>
+![](../Module3/Project1.png)
+</center>
+
+<center>
+![](../Module3/Project2.png)
+</center>
+
