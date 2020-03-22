@@ -18,6 +18,8 @@ knitr::opts_knit$set(root.dir = "/cloud/project")
 
 ## Preliminaries
 
+Testing pushing a change to GitHub.
+
 First load the packages that we will be using in this document. You will need to install some of these since we have not used them before.
 ```{r}
 library(tidyverse)  # core group of tidyverse packages
