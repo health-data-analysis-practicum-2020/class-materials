@@ -8,7 +8,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = "/cloud/project/")
+knitr::opts_knit$set(root.dir = "/cloud/project")
 ```
 
 Poisson regression is a useful modeling tool when the outcome variable, $Y$, is a count, or number of events. It's appropriate when $Y$ has a Poisson distribution, which is often an appropriate distributional assumption for count variables.
@@ -88,7 +88,7 @@ We can interpret these *rate ratios* like we do the *odds ratios* we get from lo
 
 The following table shows the data from this paper:
 
-![Table 1: Total game concussions and concussion rates by sport, year, and sex](Poisson_notes/data_table.png)
+![Table 1: Total game concussions and concussion rates by sport, year, and sex](data_table.png)
 
 We see from this table that for each sport and for each sex, we have a count of the number of concussions (*Total concussions* column).  But we wouldn't want to directly compared the number of concussions between lacrosse and soccer because there were many more game exposures (*Game Exposures* column) played in soccer than in lacrosse.  So we need to actually model the *rate* of concussions by including an offset for the game exposures.
 
